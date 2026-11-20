@@ -83,7 +83,6 @@ html_code = f"""
     overflow-x: hidden;
   }}
 
-  /* 로비 화면 */
   #lobby-screen {{
     max-width: 980px;
     margin: 6px auto;
@@ -158,7 +157,6 @@ html_code = f"""
     line-height: 1.45;
   }}
 
-  /* 게임 화면 */
   #game-screen {{
     display: none;
     max-width: 1380px;
@@ -228,7 +226,6 @@ html_code = f"""
     touch-action: none;
   }}
 
-  /* 터치 컨트롤 바 (태블릿/모바일 최적화) */
   .controls-bar {{
     display: flex;
     justify-content: space-between;
@@ -283,7 +280,6 @@ html_code = f"""
   }}
   .action-btn:active {{ transform: scale(0.96); }}
 
-  /* 오른쪽 패널 */
   .right-panel {{
     display: flex;
     flex-direction: column;
@@ -389,6 +385,12 @@ html_code = f"""
   .btn-tts.unlocked-answer:hover {{
     background: #047857;
   }}
+  .tts-status {{
+    font-size: 12px;
+    color: #93c5fd;
+    margin-top: 4px;
+    min-height: 16px;
+  }}
   .btn-mic {{
     background: #dc2626;
     color: white;
@@ -441,7 +443,6 @@ html_code = f"""
   }}
   .btn-submit:hover {{ background: #34d399; }}
 
-  /* 태블릿(가로/세로) 및 스마트폰 반응형 */
   @media (max-width: 1024px) {{
     .main-arena {{
       grid-template-columns: 1fr;
@@ -544,16 +545,16 @@ html_code = f"""
       <img id="lobby-p1-img" class="role-avatar" alt="1번 산타 요원" />
       <div class="role-name" style="color:#f87171;">🔴 1번 산타 요원 (짝꿍 A)</div>
       <div class="role-desc">
-        • 시작 구역: <b>주방(Kitchen) &amp; 거실(Living Room)</b><br>
-        • 먼저 우리 구역의 보물 단서를 찾아 영어 문장을 완성하세요!
+        • 담당 구역: <b>주방(Kitchen) ↔ 거실(Living Room)</b><br>
+        • 위·아래 방이 연결되어 있어요! 보물 단서를 찾아 문장을 완성하세요.
       </div>
     </div>
     <div class="role-card p2" onclick="startGame(2)">
       <img id="lobby-p2-img" class="role-avatar" alt="2번 엘프 요원" />
       <div class="role-name" style="color:#4ade80;">🟢 2번 엘프 요원 (짝꿍 B)</div>
       <div class="role-desc">
-        • 시작 구역: <b>침실(Bedroom) &amp; 정원(Garden)</b><br>
-        • 먼저 우리 구역의 보물 단서를 찾아 영어 문장을 완성하세요!
+        • 담당 구역: <b>침실(Bedroom) ↔ 정원(Garden)</b><br>
+        • 위·아래 방이 연결되어 있어요! 보물 단서를 찾아 문장을 완성하세요.
       </div>
     </div>
   </div>
@@ -563,7 +564,7 @@ html_code = f"""
   <div class="top-hud">
     <div id="player-badge" class="hud-badge badge-p1">🔴 1번 산타 요원</div>
     <div style="font-size:12.5px; color:#cbd5e1; font-weight:700;">
-      터치 패드 / 맵 길게 터치 이동 · <b>[🔍 조사]</b>
+      위·아래 방 통로 개방됨 · 좌우 통로는 <b>마법 자물쇠</b> · <b>[🔍 조사]</b>
     </div>
     <div class="key-slots">
       <div id="slot-0" class="key-slot">🍳 Kitchen</div>
@@ -590,7 +591,7 @@ html_code = f"""
             onpointerdown="holdDir('right', this)" onpointerup="releaseDir('right', this)" onpointerleave="releaseDir('right', this)" onpointercancel="releaseDir('right', this)">▶</button>
         </div>
         <div class="touch-tip">
-          맵을 길게 눌러 이동하거나<br>패드로 이동 후 <b>조사</b>!
+          위·아래 방 자유 이동!<br>맵을 길게 누르거나 패드로 이동 후 <b>조사</b>
         </div>
         <button class="action-btn" onclick="interact()">🔍 조사 / 대화</button>
       </div>
@@ -604,7 +605,7 @@ html_code = f"""
         <div style="flex:1;">
           <div id="speaker-tag" class="speaker-tag">🎅 산타 본부 무전</div>
           <div id="dialogue-text" class="dialogue-text">
-            요원, 출동 준비 완료! 우리 구역 방 안의 반짝이는 보물 상자를 찾아가 조사해 보자!
+            요원, 출동 준비 완료! 위·아래로 연결된 우리 구역 방의 보물 상자를 찾아가 조사해 보자!
           </div>
         </div>
       </div>
@@ -668,8 +669,14 @@ if (ASSETS.complete) document.getElementById("complete-img").src = ASSETS.comple
 if (ASSETS.santa_happy) document.getElementById("end-santa-img").src = ASSETS.santa_happy;
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function unlockAudioContext() {{
+  if (audioCtx && audioCtx.state === "suspended") {{
+    audioCtx.resume().catch(() => {{}});
+  }}
+}}
+
 function playSFX(type) {{
-  if (audioCtx.state === "suspended") audioCtx.resume();
+  unlockAudioContext();
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.connect(gain);
@@ -704,30 +711,101 @@ function playSFX(type) {{
     gain.gain.setValueAtTime(0.12, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
     osc.start(now); osc.stop(now + 0.28);
+  }} else if (type === "tts_ping") {{
+    // 기기 TTS 미지원/차단 시 음절 수에 맞춘 부드러운 안내음
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, now);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    osc.start(now); osc.stop(now + 0.15);
   }}
 }}
 
-function speakEnglish(text) {{
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US";
-  u.rate = 0.88;
-  u.pitch = 1.05;
-  const voices = window.speechSynthesis.getVoices();
-  const enVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("en"));
-  if (enVoice) u.voice = enVoice;
-
-  const frame = document.getElementById("portrait-frame");
-  frame.classList.add("speaking");
-  u.onend = () => frame.classList.remove("speaking");
-  u.onerror = () => frame.classList.remove("speaking");
-  window.speechSynthesis.speak(u);
+// 모바일/태블릿 TTS 안정화 엔진
+let cachedVoices = [];
+function refreshVoices() {{
+  if ("speechSynthesis" in window) {{
+    const v = window.speechSynthesis.getVoices();
+    if (v && v.length > 0) cachedVoices = v;
+  }}
+}}
+if ("speechSynthesis" in window) {{
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
 }}
 
-if ("speechSynthesis" in window) {{
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+let ttsKeepAliveTimer = null;
+function speakEnglish(text, statusElId = "tts-status-msg") {{
+  unlockAudioContext();
+  const statusEl = document.getElementById(statusElId);
+  const frame = document.getElementById("portrait-frame");
+
+  if (!("speechSynthesis" in window)) {{
+    if (statusEl) statusEl.innerText = `문장: "${{text}}" (이 기기는 음성 합성을 지원하지 않습니다)`;
+    playSFX("tts_ping");
+    return;
+  }}
+
+  refreshVoices();
+  if (window.speechSynthesis.paused) {{
+    try {{ window.speechSynthesis.resume(); }} catch (e) {{}}
+  }}
+  window.speechSynthesis.cancel();
+  if (ttsKeepAliveTimer) clearInterval(ttsKeepAliveTimer);
+
+  setTimeout(() => {{
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.rate = 0.86;
+    utter.pitch = 1.05;
+    utter.volume = 1.0;
+
+    const enVoice =
+      cachedVoices.find(v => v.lang && v.lang.toLowerCase() === "en-us") ||
+      cachedVoices.find(v => v.lang && v.lang.toLowerCase().startsWith("en"));
+    if (enVoice) utter.voice = enVoice;
+
+    let spokenStarted = false;
+    frame.classList.add("speaking");
+    if (statusEl) statusEl.innerText = `🔊 재생 중: "${{text}}"`;
+
+    utter.onstart = () => {{
+      spokenStarted = true;
+      frame.classList.add("speaking");
+    }};
+    utter.onend = () => {{
+      frame.classList.remove("speaking");
+      if (ttsKeepAliveTimer) clearInterval(ttsKeepAliveTimer);
+      if (statusEl) statusEl.innerText = `✅ 재생 완료: "${{text}}"`;
+    }};
+    utter.onerror = () => {{
+      frame.classList.remove("speaking");
+      if (ttsKeepAliveTimer) clearInterval(ttsKeepAliveTimer);
+      playSFX("tts_ping");
+      if (statusEl) statusEl.innerText = `🔇 기기 음성 차단/음소거 상태일 수 있어요. 문장: "${{text}}"`;
+    }};
+
+    window.speechSynthesis.speak(utter);
+    if (window.speechSynthesis.paused) {{
+      try {{ window.speechSynthesis.resume(); }} catch (e) {{}}
+    }}
+
+    // 모바일 크롬/사파리에서 발화가 중간에 멈추는 현상 방지
+    let ticks = 0;
+    ttsKeepAliveTimer = setInterval(() => {{
+      ticks++;
+      if (window.speechSynthesis.paused) {{
+        try {{ window.speechSynthesis.resume(); }} catch (e) {{}}
+      }}
+      if (ticks > 25 || !window.speechSynthesis.speaking) {{
+        clearInterval(ttsKeepAliveTimer);
+        frame.classList.remove("speaking");
+        if (!spokenStarted && statusEl) {{
+          statusEl.innerText = `💡 태블릿/폰 미디어 음량과 무음 스위치를 확인해 주세요 ("${{text}}")`;
+        }}
+      }}
+    }}, 120);
+  }}, 90);
 }}
 
 const ROOMS = [
@@ -741,8 +819,8 @@ const ROOMS = [
     altAnswers: ["there is a stove", "there's a stove"],
     itemLabel: "a stove (가스레인지)",
     crop: [0, 0],
-    chestPos: {{ x: 155, y: 135 }},
-    decoyPos: {{ x: 265, y: 185 }},
+    chestPos: {{ x: 155, y: 125 }},
+    decoyPos: {{ x: 265, y: 170 }},
     decoyImg: "decoy_kitchen",
     decoyText: "앗, 꽝! 배고픈 고양이(a hungry cat)가 생선을 훔쳐 먹고 있어요! 다른 상자를 찾아보세요."
   }},
@@ -756,8 +834,8 @@ const ROOMS = [
     altAnswers: ["there is a bed", "there's a bed"],
     itemLabel: "a bed (침대)",
     crop: [1, 0],
-    chestPos: {{ x: 605, y: 135 }},
-    decoyPos: {{ x: 495, y: 185 }},
+    chestPos: {{ x: 605, y: 125 }},
+    decoyPos: {{ x: 495, y: 170 }},
     decoyImg: "decoy_bedroom",
     decoyText: "앗, 꽝! 강아지(a sleeping dog)가 산타 양말을 물고 자고 있어요! 다른 상자를 찾아보세요."
   }},
@@ -771,8 +849,8 @@ const ROOMS = [
     altAnswers: ["there is a sofa", "there's a sofa"],
     itemLabel: "a sofa (소파)",
     crop: [0, 1],
-    chestPos: {{ x: 155, y: 405 }},
-    decoyPos: {{ x: 265, y: 355 }},
+    chestPos: {{ x: 155, y: 415 }},
+    decoyPos: {{ x: 265, y: 365 }},
     decoyImg: "decoy_living",
     decoyText: "앗, 꽝! 장난감 로봇(a toy robot)이 거실 러그 위에서 춤추고 있어요! 다른 상자를 찾아보세요."
   }},
@@ -786,32 +864,40 @@ const ROOMS = [
     altAnswers: ["there are two trees", "there are 2 trees"],
     itemLabel: "two trees (나무 두 그루)",
     crop: [1, 1],
-    chestPos: {{ x: 605, y: 405 }},
-    decoyPos: {{ x: 495, y: 355 }},
+    chestPos: {{ x: 605, y: 415 }},
+    decoyPos: {{ x: 495, y: 365 }},
     decoyImg: "decoy_garden",
     decoyText: "앗, 꽝! 귀여운 눈사람(a cute snowman)이 인사하고 있어요! 다른 상자를 찾아보세요."
   }}
 ];
 
+// 좌우 구역 간 통로 자물쇠 (상단 / 하단)
 const GATES = [
   {{ id: "top_gate", x: 380, y: 145, unlocked: false, targetRoomForP1: 1, targetRoomForP2: 0 }},
   {{ id: "bot_gate", x: 380, y: 405, unlocked: false, targetRoomForP1: 3, targetRoomForP2: 2 }}
 ];
 
+// 위·아래 방(주방↔거실, 침실↔정원)은 세로 통로를 뚫어 자유 이동 가능!
+// 좌측 세로통로 개방 구간: x = 155..235 / 우측 세로통로 개방 구간: x = 525..605
 const WALL_RECTS = [
+  // 외곽 벽
   {{ x: 0, y: 0, w: 760, h: 36 }},
   {{ x: 0, y: 504, w: 760, h: 36 }},
   {{ x: 0, y: 0, w: 36, h: 540 }},
   {{ x: 724, y: 0, w: 36, h: 540 }},
-  {{ x: 36, y: 256, w: 310, h: 28 }},
-  {{ x: 414, y: 256, w: 310, h: 28 }},
+  // 가로 구분벽 (좌측 위↔아래 통로 x=155..235 개방, 우측 위↔아래 통로 x=525..605 개방)
+  {{ x: 36, y: 256, w: 118, h: 28 }},
+  {{ x: 236, y: 256, w: 112, h: 28 }},
+  {{ x: 412, y: 256, w: 112, h: 28 }},
+  {{ x: 606, y: 256, w: 118, h: 28 }},
+  // 중앙 세로벽 (상단 좌우통로 y=115..175 와 하단 좌우통로 y=375..435 만 개방)
   {{ x: 364, y: 36, w: 32, h: 78 }},
   {{ x: 364, y: 176, w: 32, h: 198 }},
   {{ x: 364, y: 436, w: 32, h: 68 }}
 ];
 
 let playerRole = 1;
-let player = {{ x: 190, y: 210, radius: 18, speed: 4.3 }};
+let player = {{ x: 195, y: 215, radius: 17, speed: 4.4 }};
 let keysPressed = {{}};
 let touchDirs = {{ up: false, down: false, left: false, right: false }};
 let canvasTarget = null;
@@ -820,6 +906,7 @@ let openedDecoys = [false, false, false, false];
 let solvedWriteRooms = [false, false, false, false];
 
 function holdDir(dir, el) {{
+  unlockAudioContext();
   canvasTarget = null;
   touchDirs[dir] = true;
   if (el) el.classList.add("active-dir");
@@ -837,6 +924,8 @@ function setDialogue(portraitKey, speaker, text) {{
 }}
 
 function startGame(role) {{
+  unlockAudioContext();
+  refreshVoices();
   playerRole = role;
   document.getElementById("lobby-screen").style.display = "none";
   document.getElementById("game-screen").style.display = "block";
@@ -844,16 +933,16 @@ function startGame(role) {{
   const badge = document.getElementById("player-badge");
   if (role === 1) {{
     badge.className = "hud-badge badge-p1";
-    badge.innerText = "🔴 1번 산타 요원 (주방 · 거실 담당)";
-    player.x = 190; player.y = 205;
+    badge.innerText = "🔴 1번 산타 요원 (주방 ↔ 거실)";
+    player.x = 195; player.y = 210;
     document.getElementById("end-agent-img").src = ASSETS.portrait_p1 || "";
-    setDialogue("portrait_p1", "🔴 1번 산타 요원", "출동 완료! 왼쪽 <b>주방(위)</b>과 <b>거실(아래)</b> 보물 상자를 조사하자! 옆 방 통로는 자물쇠로 막혀 있어요.");
+    setDialogue("portrait_p1", "🔴 1번 산타 요원", "출동! <b>주방(위)과 거실(아래)</b>은 세로 통로로 연결되어 있어요. 보물 상자를 찾아 조사하자!");
   }} else {{
     badge.className = "hud-badge badge-p2";
-    badge.innerText = "🟢 2번 엘프 요원 (침실 · 정원 담당)";
-    player.x = 570; player.y = 205;
+    badge.innerText = "🟢 2번 엘프 요원 (침실 ↔ 정원)";
+    player.x = 565; player.y = 210;
     document.getElementById("end-agent-img").src = ASSETS.portrait_p2 || "";
-    setDialogue("portrait_p2", "🟢 2번 엘프 요원", "출동 완료! 오른쪽 <b>침실(위)</b>과 <b>정원(아래)</b> 보물 상자를 조사하자! 옆 방 통로는 자물쇠로 막혀 있어요.");
+    setDialogue("portrait_p2", "🟢 2번 엘프 요원", "출동! <b>침실(위)과 정원(아래)</b>은 세로 통로로 연결되어 있어요. 보물 상자를 찾아 조사하자!");
   }}
   requestAnimationFrame(gameLoop);
 }}
@@ -906,6 +995,7 @@ function focusInputSmooth(id) {{
 }}
 
 function interact() {{
+  unlockAudioContext();
   for (const g of GATES) {{
     if (!g.unlocked && Math.hypot(player.x - g.x, player.y - g.y) < 84) {{
       openGateChallenge(g);
@@ -916,7 +1006,7 @@ function interact() {{
   for (const r of ROOMS) {{
     if (Math.hypot(player.x - r.chestPos.x, player.y - r.chestPos.y) < 64) {{
       if (r.owner !== playerRole && !unlockedRooms[r.id]) {{
-        setDialogue("santa_panic", "🎅 산타 본부", "통로가 마법 자물쇠로 막혀 있어요! 먼저 중앙 자물쇠 앞에서 짝꿍에게 영어로 질문해 보세요!");
+        setDialogue("santa_panic", "🎅 산타 본부", "옆 구역으로 가는 통로는 마법 자물쇠로 막혀 있어요! 먼저 중앙 자물쇠 앞에서 짝꿍에게 영어로 질문해 보세요!");
         playSFX("error");
         return;
       }}
@@ -975,10 +1065,11 @@ function openTreasureMission(room) {{
 
       <div class="step-box">
         <div class="step-title">1단계: 원어민 질문 듣기 (정답 확인 후 정답 문장 듣기 해금)</div>
-        <button class="btn-tts" onclick="speakEnglish('${{room.question.replace(/'/g, "\\\\'")}}')">🔊 질문 듣기</button>
+        <button class="btn-tts" onclick="speakEnglish('${{room.question.replace(/'/g, "\\\\'")}}', 'mission-tts-status')">🔊 질문 듣기</button>
         <button id="btn-answer-tts" class="btn-tts unlocked-answer"
           style="display:${{isSolved ? 'inline-block' : 'none'}};"
-          onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}')">🔊 정답 문장 듣기</button>
+          onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}', 'mission-tts-status')">🔊 정답 문장 듣기</button>
+        <div id="mission-tts-status" class="tts-status"></div>
       </div>
 
       <div class="step-box">
@@ -1031,7 +1122,7 @@ function checkMissionWrite(roomId) {{
     speakBox.style.opacity = "1";
     speakBox.style.pointerEvents = "auto";
     document.getElementById("speech-result").innerText = "정답 문장을 듣고 말해보세요!";
-    speakEnglish(room.answer);
+    speakEnglish(room.answer, "mission-tts-status");
   }} else {{
     playSFX("error");
     setDialogue("santa_panic", "🎅 산타 교관",
@@ -1094,8 +1185,9 @@ function completeRoomMission(roomId, spokenText) {{
       <div style="background:#0f172a; border:2px solid #facc15; border-radius:12px; padding:12px; font-size:18px; font-weight:900; color:#fff; margin-bottom:12px;">
         "${{room.answer}}"
       </div>
-      <button class="btn-tts unlocked-answer" onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}')">🔊 정답 문장 다시 듣기</button>
-      <p style="font-size:13.5px; color:#cbd5e1; line-height:1.5; margin-top:12px;">
+      <button class="btn-tts unlocked-answer" onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}', 'done-tts-status')">🔊 정답 문장 다시 듣기</button>
+      <div id="done-tts-status" class="tts-status"></div>
+      <p style="font-size:13.5px; color:#cbd5e1; line-height:1.5; margin-top:10px;">
         이제 중앙 통로의 <b>황금 마법 자물쇠</b> 앞으로 가서 짝꿍 방의 단서를 영어로 물어보세요!
       </p>
     </div>
@@ -1126,7 +1218,8 @@ function openGateChallenge(gate) {{
         <div style="font-size:16px; font-weight:900; color:#fde047; margin-bottom:6px;">
           "${{targetRoom.question}}"
         </div>
-        <button class="btn-tts" onclick="speakEnglish('${{targetRoom.question.replace(/'/g, "\\\\'")}}')">🔊 질문 발음 들어보기</button>
+        <button class="btn-tts" onclick="speakEnglish('${{targetRoom.question.replace(/'/g, "\\\\'")}}', 'gate-tts-status')">🔊 질문 발음 들어보기</button>
+        <div id="gate-tts-status" class="tts-status"></div>
       </div>
 
       <div class="step-box">
@@ -1187,8 +1280,8 @@ function checkAllClear() {{
 const canvas = document.getElementById("rpgCanvas");
 const ctx = canvas.getContext("2d");
 
-// 맵 캔버스 직접 터치/드래그 유도 이동
 function updateCanvasTouchPoint(clientX, clientY) {{
+  unlockAudioContext();
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
