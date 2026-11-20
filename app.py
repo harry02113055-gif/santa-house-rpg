@@ -39,6 +39,13 @@ def load_img_b64(candidates):
                 return f"data:{mime};base64,{data}"
     return ""
 
+def load_audio_b64(filename):
+    if os.path.exists(filename):
+        with open(filename, "rb") as f:
+            data = base64.b64encode(f.read()).decode("utf-8")
+        return f"data:audio/mpeg;base64,{data}"
+    return ""
+
 ASSETS = {
     "map": load_img_b64(["house_map.png", "house_map.jpg"]),
     "cards": load_img_b64(["cards.png", "cards.jpg"]),
@@ -58,7 +65,19 @@ ASSETS = {
     "decoy_garden": load_img_b64(["decoy_garden.png", "decoy_garden.jpg"]),
 }
 
+AUDIO_FILES = {
+    "q_kitchen": load_audio_b64("q_kitchen.mp3"),
+    "q_bedroom": load_audio_b64("q_bedroom.mp3"),
+    "q_living": load_audio_b64("q_living.mp3"),
+    "q_garden": load_audio_b64("q_garden.mp3"),
+    "a_kitchen": load_audio_b64("a_kitchen.mp3"),
+    "a_bedroom": load_audio_b64("a_bedroom.mp3"),
+    "a_living": load_audio_b64("a_living.mp3"),
+    "a_garden": load_audio_b64("a_garden.mp3"),
+}
+
 assets_json = json.dumps(ASSETS)
+audio_json = json.dumps(AUDIO_FILES)
 
 html_code = f"""
 <!DOCTYPE html>
@@ -650,6 +669,7 @@ html_code = f"""
 
 <script>
 const ASSETS = {assets_json};
+const AUDIO_FILES = {audio_json};
 const IMGS = {{}};
 for (const [k, src] of Object.entries(ASSETS)) {{
   if (src) {{
@@ -712,7 +732,6 @@ function playSFX(type) {{
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
     osc.start(now); osc.stop(now + 0.28);
   }} else if (type === "tts_ping") {{
-    // 기기 TTS 미지원/차단 시 음절 수에 맞춘 부드러운 안내음
     osc.type = "sine";
     osc.frequency.setValueAtTime(587.33, now);
     gain.gain.setValueAtTime(0.08, now);
@@ -721,96 +740,74 @@ function playSFX(type) {{
   }}
 }}
 
-// 모바일/태블릿 TTS 안정화 엔진
-let cachedVoices = [];
-function refreshVoices() {{
-  if ("speechSynthesis" in window) {{
-    const v = window.speechSynthesis.getVoices();
-    if (v && v.length > 0) cachedVoices = v;
-  }}
-}}
-if ("speechSynthesis" in window) {{
-  refreshVoices();
-  window.speechSynthesis.onvoiceschanged = refreshVoices;
-}}
-
-let ttsKeepAliveTimer = null;
-function speakEnglish(text, statusElId = "tts-status-msg") {{
+// MP3 음성 우선 재생 + 미등록/미지원 시 TTS 보조
+let currentAudioPlayer = null;
+function speakVoice(audioKey, fallbackText, statusElId) {{
   unlockAudioContext();
   const statusEl = document.getElementById(statusElId);
   const frame = document.getElementById("portrait-frame");
 
-  if (!("speechSynthesis" in window)) {{
-    if (statusEl) statusEl.innerText = `문장: "${{text}}" (이 기기는 음성 합성을 지원하지 않습니다)`;
-    playSFX("tts_ping");
+  if (currentAudioPlayer) {{
+    try {{ currentAudioPlayer.pause(); currentAudioPlayer.currentTime = 0; }} catch (e) {{}}
+  }}
+  if ("speechSynthesis" in window) {{
+    try {{ window.speechSynthesis.cancel(); }} catch (e) {{}}
+  }}
+
+  const b64Src = AUDIO_FILES[audioKey];
+  if (b64Src) {{
+    const player = new Audio(b64Src);
+    currentAudioPlayer = player;
+    frame.classList.add("speaking");
+    if (statusEl) statusEl.innerText = `🔊 음성 재생 중: "${{fallbackText}}"`;
+
+    player.onended = () => {{
+      frame.classList.remove("speaking");
+      if (statusEl) statusEl.innerText = `✅ 재생 완료: "${{fallbackText}}"`;
+    }};
+    player.onerror = () => {{
+      frame.classList.remove("speaking");
+      playSFX("tts_ping");
+      if (statusEl) statusEl.innerText = `🔇 오디오 재생 오류 ("${{fallbackText}}")`;
+    }};
+    player.play().catch(() => {{
+      frame.classList.remove("speaking");
+      playSFX("tts_ping");
+      if (statusEl) statusEl.innerText = `💡 한 번 더 탭하거나 볼륨을 확인해 주세요 ("${{fallbackText}}")`;
+    }});
     return;
   }}
 
-  refreshVoices();
-  if (window.speechSynthesis.paused) {{
-    try {{ window.speechSynthesis.resume(); }} catch (e) {{}}
-  }}
-  window.speechSynthesis.cancel();
-  if (ttsKeepAliveTimer) clearInterval(ttsKeepAliveTimer);
-
-  setTimeout(() => {{
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "en-US";
-    utter.rate = 0.86;
-    utter.pitch = 1.05;
-    utter.volume = 1.0;
-
-    const enVoice =
-      cachedVoices.find(v => v.lang && v.lang.toLowerCase() === "en-us") ||
-      cachedVoices.find(v => v.lang && v.lang.toLowerCase().startsWith("en"));
-    if (enVoice) utter.voice = enVoice;
-
-    let spokenStarted = false;
-    frame.classList.add("speaking");
-    if (statusEl) statusEl.innerText = `🔊 재생 중: "${{text}}"`;
-
-    utter.onstart = () => {{
-      spokenStarted = true;
+  // MP3 파일이 아직 없을 때만 브라우저 TTS 시도
+  if ("speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined") {{
+    try {{
+      const u = new SpeechSynthesisUtterance(fallbackText);
+      u.lang = "en-US";
+      u.rate = 0.88;
       frame.classList.add("speaking");
-    }};
-    utter.onend = () => {{
-      frame.classList.remove("speaking");
-      if (ttsKeepAliveTimer) clearInterval(ttsKeepAliveTimer);
-      if (statusEl) statusEl.innerText = `✅ 재생 완료: "${{text}}"`;
-    }};
-    utter.onerror = () => {{
-      frame.classList.remove("speaking");
-      if (ttsKeepAliveTimer) clearInterval(ttsKeepAliveTimer);
-      playSFX("tts_ping");
-      if (statusEl) statusEl.innerText = `🔇 기기 음성 차단/음소거 상태일 수 있어요. 문장: "${{text}}"`;
-    }};
-
-    window.speechSynthesis.speak(utter);
-    if (window.speechSynthesis.paused) {{
-      try {{ window.speechSynthesis.resume(); }} catch (e) {{}}
-    }}
-
-    // 모바일 크롬/사파리에서 발화가 중간에 멈추는 현상 방지
-    let ticks = 0;
-    ttsKeepAliveTimer = setInterval(() => {{
-      ticks++;
-      if (window.speechSynthesis.paused) {{
-        try {{ window.speechSynthesis.resume(); }} catch (e) {{}}
-      }}
-      if (ticks > 25 || !window.speechSynthesis.speaking) {{
-        clearInterval(ttsKeepAliveTimer);
+      if (statusEl) statusEl.innerText = `🔊 음성 재생 중: "${{fallbackText}}"`;
+      u.onend = () => {{
         frame.classList.remove("speaking");
-        if (!spokenStarted && statusEl) {{
-          statusEl.innerText = `💡 태블릿/폰 미디어 음량과 무음 스위치를 확인해 주세요 ("${{text}}")`;
-        }}
-      }}
-    }}, 120);
-  }}, 90);
+        if (statusEl) statusEl.innerText = `✅ 재생 완료: "${{fallbackText}}"`;
+      }};
+      u.onerror = () => {{
+        frame.classList.remove("speaking");
+        playSFX("tts_ping");
+        if (statusEl) statusEl.innerText = `MP3 파일(${{audioKey}}.mp3)을 추가하면 모바일에서도 소리가 납니다: "${{fallbackText}}"`;
+      }};
+      window.speechSynthesis.speak(u);
+      return;
+    }} catch (e) {{}}
+  }}
+
+  playSFX("tts_ping");
+  if (statusEl) statusEl.innerText = `이 기기는 음성을 지원하지 않습니다. MP3(${{audioKey}}.mp3)를 넣어주세요: "${{fallbackText}}"`;
 }}
 
 const ROOMS = [
   {{
     id: 0,
+    roomKey: "kitchen",
     roomName: "Kitchen",
     roomKo: "주방",
     owner: 1,
@@ -826,6 +823,7 @@ const ROOMS = [
   }},
   {{
     id: 1,
+    roomKey: "bedroom",
     roomName: "Bedroom",
     roomKo: "침실",
     owner: 2,
@@ -841,6 +839,7 @@ const ROOMS = [
   }},
   {{
     id: 2,
+    roomKey: "living",
     roomName: "Living Room",
     roomKo: "거실",
     owner: 1,
@@ -856,6 +855,7 @@ const ROOMS = [
   }},
   {{
     id: 3,
+    roomKey: "garden",
     roomName: "Garden",
     roomKo: "정원",
     owner: 2,
@@ -871,26 +871,21 @@ const ROOMS = [
   }}
 ];
 
-// 좌우 구역 간 통로 자물쇠 (상단 / 하단)
 const GATES = [
   {{ id: "top_gate", x: 380, y: 145, unlocked: false, targetRoomForP1: 1, targetRoomForP2: 0 }},
   {{ id: "bot_gate", x: 380, y: 405, unlocked: false, targetRoomForP1: 3, targetRoomForP2: 2 }}
 ];
 
-// 위·아래 방(주방↔거실, 침실↔정원)은 세로 통로를 뚫어 자유 이동 가능!
-// 좌측 세로통로 개방 구간: x = 155..235 / 우측 세로통로 개방 구간: x = 525..605
+// 위·아래 방(주방↔거실, 침실↔정원)은 세로 통로를 뚫어 자유 이동 가능
 const WALL_RECTS = [
-  // 외곽 벽
   {{ x: 0, y: 0, w: 760, h: 36 }},
   {{ x: 0, y: 504, w: 760, h: 36 }},
   {{ x: 0, y: 0, w: 36, h: 540 }},
   {{ x: 724, y: 0, w: 36, h: 540 }},
-  // 가로 구분벽 (좌측 위↔아래 통로 x=155..235 개방, 우측 위↔아래 통로 x=525..605 개방)
   {{ x: 36, y: 256, w: 118, h: 28 }},
   {{ x: 236, y: 256, w: 112, h: 28 }},
   {{ x: 412, y: 256, w: 112, h: 28 }},
   {{ x: 606, y: 256, w: 118, h: 28 }},
-  // 중앙 세로벽 (상단 좌우통로 y=115..175 와 하단 좌우통로 y=375..435 만 개방)
   {{ x: 364, y: 36, w: 32, h: 78 }},
   {{ x: 364, y: 176, w: 32, h: 198 }},
   {{ x: 364, y: 436, w: 32, h: 68 }}
@@ -925,7 +920,6 @@ function setDialogue(portraitKey, speaker, text) {{
 
 function startGame(role) {{
   unlockAudioContext();
-  refreshVoices();
   playerRole = role;
   document.getElementById("lobby-screen").style.display = "none";
   document.getElementById("game-screen").style.display = "block";
@@ -1064,11 +1058,11 @@ function openTreasureMission(room) {{
       </div>
 
       <div class="step-box">
-        <div class="step-title">1단계: 원어민 질문 듣기 (정답 확인 후 정답 문장 듣기 해금)</div>
-        <button class="btn-tts" onclick="speakEnglish('${{room.question.replace(/'/g, "\\\\'")}}', 'mission-tts-status')">🔊 질문 듣기</button>
+        <div class="step-title">1단계: 질문 듣기 (정답 확인 후 정답 문장 듣기 해금)</div>
+        <button class="btn-tts" onclick="speakVoice('q_${{room.roomKey}}', '${{room.question.replace(/'/g, "\\\\'")}}', 'mission-tts-status')">🔊 질문 듣기</button>
         <button id="btn-answer-tts" class="btn-tts unlocked-answer"
           style="display:${{isSolved ? 'inline-block' : 'none'}};"
-          onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}', 'mission-tts-status')">🔊 정답 문장 듣기</button>
+          onclick="speakVoice('a_${{room.roomKey}}', '${{room.answer.replace(/'/g, "\\\\'")}}', 'mission-tts-status')">🔊 정답 문장 듣기</button>
         <div id="mission-tts-status" class="tts-status"></div>
       </div>
 
@@ -1116,13 +1110,13 @@ function checkMissionWrite(roomId) {{
     if (ansBtn) ansBtn.style.display = "inline-block";
 
     setDialogue("santa_happy", "😎 산타 교관",
-      `정답이에요! <b>"${{room.answer}}"</b><br>이제 <b>[🔊 정답 문장 듣기]</b>로 원어민 발음을 확인한 뒤 <b>3단계 마이크</b>로 따라 읽어보세요!`);
+      `정답이에요! <b>"${{room.answer}}"</b><br>이제 <b>[🔊 정답 문장 듣기]</b>로 발음을 확인한 뒤 <b>3단계 마이크</b>로 따라 읽어보세요!`);
 
     const speakBox = document.getElementById("speak-step-box");
     speakBox.style.opacity = "1";
     speakBox.style.pointerEvents = "auto";
     document.getElementById("speech-result").innerText = "정답 문장을 듣고 말해보세요!";
-    speakEnglish(room.answer, "mission-tts-status");
+    speakVoice(`a_${{room.roomKey}}`, room.answer, "mission-tts-status");
   }} else {{
     playSFX("error");
     setDialogue("santa_panic", "🎅 산타 교관",
@@ -1185,7 +1179,7 @@ function completeRoomMission(roomId, spokenText) {{
       <div style="background:#0f172a; border:2px solid #facc15; border-radius:12px; padding:12px; font-size:18px; font-weight:900; color:#fff; margin-bottom:12px;">
         "${{room.answer}}"
       </div>
-      <button class="btn-tts unlocked-answer" onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}', 'done-tts-status')">🔊 정답 문장 다시 듣기</button>
+      <button class="btn-tts unlocked-answer" onclick="speakVoice('a_${{room.roomKey}}', '${{room.answer.replace(/'/g, "\\\\'")}}', 'done-tts-status')">🔊 정답 문장 다시 듣기</button>
       <div id="done-tts-status" class="tts-status"></div>
       <p style="font-size:13.5px; color:#cbd5e1; line-height:1.5; margin-top:10px;">
         이제 중앙 통로의 <b>황금 마법 자물쇠</b> 앞으로 가서 짝꿍 방의 단서를 영어로 물어보세요!
@@ -1218,7 +1212,7 @@ function openGateChallenge(gate) {{
         <div style="font-size:16px; font-weight:900; color:#fde047; margin-bottom:6px;">
           "${{targetRoom.question}}"
         </div>
-        <button class="btn-tts" onclick="speakEnglish('${{targetRoom.question.replace(/'/g, "\\\\'")}}', 'gate-tts-status')">🔊 질문 발음 들어보기</button>
+        <button class="btn-tts" onclick="speakVoice('q_${{targetRoom.roomKey}}', '${{targetRoom.question.replace(/'/g, "\\\\'")}}', 'gate-tts-status')">🔊 질문 발음 들어보기</button>
         <div id="gate-tts-status" class="tts-status"></div>
       </div>
 
