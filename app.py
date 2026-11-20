@@ -802,7 +802,6 @@ function speakVoice(audioKey, fallbackText, statusElId) {{
   if (statusEl) statusEl.innerText = `음성 미지원 기기입니다. MP3(${{audioKey}}.mp3)를 넣어주세요: "${{fallbackText}}"`;
 }}
 
-// 4개 방 핵심 미션 데이터: a stove / two beds / a TV / three trees
 const ROOMS = [
   {{
     id: 0,
@@ -898,6 +897,10 @@ let unlockedRooms = [false, false, false, false];
 let openedDecoys = [false, false, false, false];
 let solvedWriteRooms = [false, false, false, false];
 
+function isRoomVisible(room) {{
+  return room.owner === playerRole || unlockedRooms[room.id];
+}}
+
 function holdDir(dir, el) {{
   unlockAudioContext();
   canvasTarget = null;
@@ -928,13 +931,13 @@ function startGame(role) {{
     badge.innerText = "🔴 1번 산타 요원 (주방 ↔ 거실)";
     player.x = 195; player.y = 210;
     document.getElementById("end-agent-img").src = ASSETS.portrait_p1 || "";
-    setDialogue("portrait_p1", "🔴 1번 산타 요원", "출동! <b>주방(위)과 거실(아래)</b>은 세로 통로로 연결되어 있어요. 보물 상자를 찾아 조사하자!");
+    setDialogue("portrait_p1", "🔴 1번 산타 요원", "출동! 자물쇠를 열지 않은 오른쪽 방들은 아직 보이지 않아요. 우리 구역 보물 상자를 먼저 조사하자!");
   }} else {{
     badge.className = "hud-badge badge-p2";
     badge.innerText = "🟢 2번 엘프 요원 (침실 ↔ 정원)";
     player.x = 565; player.y = 210;
     document.getElementById("end-agent-img").src = ASSETS.portrait_p2 || "";
-    setDialogue("portrait_p2", "🟢 2번 엘프 요원", "출동! <b>침실(위)과 정원(아래)</b>은 세로 통로로 연결되어 있어요. 보물 상자를 찾아 조사하자!");
+    setDialogue("portrait_p2", "🟢 2번 엘프 요원", "출동! 자물쇠를 열지 않은 왼쪽 방들은 아직 보이지 않아요. 우리 구역 보물 상자를 먼저 조사하자!");
   }}
   requestAnimationFrame(gameLoop);
 }}
@@ -996,12 +999,8 @@ function interact() {{
   }}
 
   for (const r of ROOMS) {{
+    if (!isRoomVisible(r)) continue;
     if (Math.hypot(player.x - r.chestPos.x, player.y - r.chestPos.y) < 64) {{
-      if (r.owner !== playerRole && !unlockedRooms[r.id]) {{
-        setDialogue("santa_panic", "🎅 산타 본부", "옆 구역으로 가는 통로는 마법 자물쇠로 막혀 있어요! 먼저 중앙 자물쇠 앞에서 짝꿍에게 영어로 질문해 보세요!");
-        playSFX("error");
-        return;
-      }}
       openTreasureMission(r);
       return;
     }}
@@ -1255,7 +1254,7 @@ function verifyGateAnswer(gateId, targetRoomId) {{
     }}, 2500);
 
     setDialogue("santa_happy", "😎 자물쇠 해제 성공!",
-      `짝꿍과 힘을 합쳐 <b>${{targetRoom.roomName}}</b> 통로를 열었어요! 이제 열린 통로를 지나갈 수 있습니다!`);
+      `짝꿍과 힘을 합쳐 <b>${{targetRoom.roomName}}</b> 방이 열렸어요! 이제 방 안을 볼 수 있습니다!`);
     document.getElementById("mission-panel").innerHTML = `
       <div style="text-align:center; padding:30px 10px;">
         <div style="font-size:44px; margin-bottom:8px;">🔓</div>
@@ -1325,6 +1324,29 @@ function updateMovement() {{
   if (dx !== 0 || dy !== 0) tryMove(dx, dy);
 }}
 
+function drawHiddenRoomFog() {{
+  // 각 방 영역: 좌상단(0..364, 0..256), 우상단(396..760, 0..256), 좌하단(0..364, 284..540), 우하단(396..760, 284..540)
+  const roomBounds = [
+    {{ room: ROOMS[0], x: 0, y: 0, w: 364, h: 256 }},
+    {{ room: ROOMS[1], x: 396, y: 0, w: 364, h: 256 }},
+    {{ room: ROOMS[2], x: 0, y: 284, w: 364, h: 256 }},
+    {{ room: ROOMS[3], x: 396, y: 284, w: 364, h: 256 }}
+  ];
+
+  for (const b of roomBounds) {{
+    if (!isRoomVisible(b.room)) {{
+      ctx.save();
+      ctx.fillStyle = "rgba(10, 14, 26, 0.95)";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("🔒 자물쇠를 열면 보입니다", b.x + b.w / 2, b.y + b.h / 2);
+      ctx.restore();
+    }}
+  }}
+}}
+
 function drawGame() {{
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1344,13 +1366,15 @@ function drawGame() {{
 
   const tick = Date.now() / 300;
   for (const r of ROOMS) {{
-    if (r.owner === playerRole || unlockedRooms[r.id]) {{
-      drawChest(r.chestPos.x, r.chestPos.y, unlockedRooms[r.id], tick);
-    }}
+    if (!isRoomVisible(r)) continue;
+    drawChest(r.chestPos.x, r.chestPos.y, unlockedRooms[r.id], tick);
     if (r.owner === playerRole && !openedDecoys[r.id]) {{
       drawChest(r.decoyPos.x, r.decoyPos.y, false, tick + 1.5);
     }}
   }}
+
+  // 자물쇠를 열지 않은 방은 안개로 가려 보이지 않게 처리
+  drawHiddenRoomFog();
 
   for (const g of GATES) {{
     if (!g.unlocked) {{
