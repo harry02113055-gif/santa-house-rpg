@@ -740,7 +740,6 @@ function playSFX(type) {{
   }}
 }}
 
-// MP3 음성 우선 재생 + 미등록/미지원 시 TTS 보조
 let currentAudioPlayer = null;
 function speakVoice(audioKey, fallbackText, statusElId) {{
   unlockAudioContext();
@@ -778,7 +777,6 @@ function speakVoice(audioKey, fallbackText, statusElId) {{
     return;
   }}
 
-  // MP3 파일이 아직 없을 때만 브라우저 TTS 시도
   if ("speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined") {{
     try {{
       const u = new SpeechSynthesisUtterance(fallbackText);
@@ -793,7 +791,7 @@ function speakVoice(audioKey, fallbackText, statusElId) {{
       u.onerror = () => {{
         frame.classList.remove("speaking");
         playSFX("tts_ping");
-        if (statusEl) statusEl.innerText = `MP3 파일(${{audioKey}}.mp3)을 추가하면 모바일에서도 소리가 납니다: "${{fallbackText}}"`;
+        if (statusEl) statusEl.innerText = `MP3(${{audioKey}}.mp3)를 올리면 모바일에서도 소리가 납니다: "${{fallbackText}}"`;
       }};
       window.speechSynthesis.speak(u);
       return;
@@ -801,9 +799,10 @@ function speakVoice(audioKey, fallbackText, statusElId) {{
   }}
 
   playSFX("tts_ping");
-  if (statusEl) statusEl.innerText = `이 기기는 음성을 지원하지 않습니다. MP3(${{audioKey}}.mp3)를 넣어주세요: "${{fallbackText}}"`;
+  if (statusEl) statusEl.innerText = `음성 미지원 기기입니다. MP3(${{audioKey}}.mp3)를 넣어주세요: "${{fallbackText}}"`;
 }}
 
+// 4개 방 핵심 미션 데이터: a stove / two beds / a TV / three trees
 const ROOMS = [
   {{
     id: 0,
@@ -828,9 +827,9 @@ const ROOMS = [
     roomKo: "침실",
     owner: 2,
     question: "What's in the bedroom?",
-    answer: "There is a bed.",
-    altAnswers: ["there is a bed", "there's a bed"],
-    itemLabel: "a bed (침대)",
+    answer: "There are two beds.",
+    altAnswers: ["there are two beds", "there are 2 beds"],
+    itemLabel: "two beds (침대 두 개)",
     crop: [1, 0],
     chestPos: {{ x: 605, y: 125 }},
     decoyPos: {{ x: 495, y: 170 }},
@@ -844,9 +843,9 @@ const ROOMS = [
     roomKo: "거실",
     owner: 1,
     question: "What's in the living room?",
-    answer: "There is a sofa.",
-    altAnswers: ["there is a sofa", "there's a sofa"],
-    itemLabel: "a sofa (소파)",
+    answer: "There is a TV.",
+    altAnswers: ["there is a tv", "there's a tv", "there is a television"],
+    itemLabel: "a TV (텔레비전)",
     crop: [0, 1],
     chestPos: {{ x: 155, y: 415 }},
     decoyPos: {{ x: 265, y: 365 }},
@@ -860,9 +859,9 @@ const ROOMS = [
     roomKo: "정원",
     owner: 2,
     question: "What's in the garden?",
-    answer: "There are two trees.",
-    altAnswers: ["there are two trees", "there are 2 trees"],
-    itemLabel: "two trees (나무 두 그루)",
+    answer: "There are three trees.",
+    altAnswers: ["there are three trees", "there are 3 trees"],
+    itemLabel: "three trees (나무 세 그루)",
     crop: [1, 1],
     chestPos: {{ x: 605, y: 415 }},
     decoyPos: {{ x: 495, y: 365 }},
@@ -876,7 +875,6 @@ const GATES = [
   {{ id: "bot_gate", x: 380, y: 405, unlocked: false, targetRoomForP1: 3, targetRoomForP2: 2 }}
 ];
 
-// 위·아래 방(주방↔거실, 침실↔정원)은 세로 통로를 뚫어 자유 이동 가능
 const WALL_RECTS = [
   {{ x: 0, y: 0, w: 760, h: 36 }},
   {{ x: 0, y: 504, w: 760, h: 36 }},
@@ -1071,7 +1069,7 @@ function openTreasureMission(room) {{
         <input id="mission-write-input" class="eng-input" type="text"
           value="${{isSolved ? room.answer : ''}}"
           onfocus="focusInputSmooth('mission-write-input')"
-          placeholder="예: There is a ..." autocomplete="off" />
+          placeholder="예: There is a ... / There are ..." autocomplete="off" />
         <button class="btn-submit" onclick="checkMissionWrite(${{room.id}})">✅ 문장 확인하기</button>
       </div>
 
@@ -1098,12 +1096,23 @@ function normalizeSentence(s) {{
   return s.toLowerCase().replace(/[.!?,'"]/g, "").replace(/\s+/g, " ").trim();
 }}
 
+function isAnswerMatched(room, rawInput) {{
+  const val = normalizeSentence(rawInput);
+  const target = normalizeSentence(room.answer);
+  if (val === target || room.altAnswers.includes(val)) return true;
+
+  if (room.id === 0) return val.includes("there is") && val.includes("stove");
+  if (room.id === 1) return val.includes("there are") && (val.includes("two") || val.includes("2")) && val.includes("beds");
+  if (room.id === 2) return val.includes("there is") && val.includes("tv");
+  if (room.id === 3) return val.includes("there are") && (val.includes("three") || val.includes("3")) && val.includes("trees");
+  return false;
+}}
+
 function checkMissionWrite(roomId) {{
   const room = ROOMS[roomId];
-  const val = normalizeSentence(document.getElementById("mission-write-input").value);
-  const target = normalizeSentence(room.answer);
+  const rawVal = document.getElementById("mission-write-input").value;
 
-  if (val === target || room.altAnswers.includes(val)) {{
+  if (isAnswerMatched(room, rawVal)) {{
     solvedWriteRooms[roomId] = true;
     playSFX("success");
     const ansBtn = document.getElementById("btn-answer-tts");
@@ -1120,7 +1129,7 @@ function checkMissionWrite(roomId) {{
   }} else {{
     playSFX("error");
     setDialogue("santa_panic", "🎅 산타 교관",
-      `아직 맞지 않아요! 먼저 <b>[🔊 질문 듣기]</b>를 누르고, <b>There is / There are</b>와 단어 철자를 다시 확인해 보세요.`);
+      `아직 맞지 않아요! 단수(<b>There is a ~</b>)와 복수(<b>There are two/three ~s</b>), 그리고 카드 속 물건 개수를 다시 확인해 보세요.`);
   }}
 }}
 
@@ -1146,7 +1155,7 @@ function startSpeechCheck(roomId) {{
     micBtn.classList.remove("listening");
     micBtn.innerText = "🎤 다시 말하기";
     const spoken = normalizeSentence(e.results[0][0].transcript);
-    const keyWord = room.id === 0 ? "stove" : room.id === 1 ? "bed" : room.id === 2 ? "sofa" : "tree";
+    const keyWord = room.id === 0 ? "stove" : room.id === 1 ? "bed" : room.id === 2 ? "tv" : "tree";
     if (spoken.includes(keyWord) || spoken.includes("there")) {{
       completeRoomMission(roomId, spoken);
     }} else {{
@@ -1229,10 +1238,9 @@ function openGateChallenge(gate) {{
 
 function verifyGateAnswer(gateId, targetRoomId) {{
   const targetRoom = ROOMS[targetRoomId];
-  const val = normalizeSentence(document.getElementById("gate-answer-input").value);
-  const target = normalizeSentence(targetRoom.answer);
+  const rawVal = document.getElementById("gate-answer-input").value;
 
-  if (val === target || targetRoom.altAnswers.includes(val)) {{
+  if (isAnswerMatched(targetRoom, rawVal)) {{
     const gate = GATES.find(g => g.id === gateId);
     gate.unlocked = true;
     unlockedRooms[targetRoomId] = true;
