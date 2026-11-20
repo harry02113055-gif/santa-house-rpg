@@ -14,10 +14,10 @@ st.set_page_config(
 st.markdown("""
 <style>
     .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 0.4rem !important;
         padding-bottom: 0.4rem !important;
-        padding-left: 0.8rem !important;
-        padding-right: 0.8rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
         max-width: 100% !important;
     }
     header[data-testid="stHeader"] { display: none; }
@@ -65,7 +65,7 @@ html_code = f"""
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <style>
   * {{
     box-sizing: border-box;
@@ -73,28 +73,30 @@ html_code = f"""
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
   }}
-  body {{
+  html, body {{
     margin: 0;
     padding: 0;
+    min-height: 100dvh;
     background: #141722;
     color: #f8fafc;
     font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
     overflow-x: hidden;
   }}
 
+  /* 로비 화면 */
   #lobby-screen {{
     max-width: 980px;
-    margin: 8px auto;
+    margin: 6px auto;
     background: linear-gradient(180deg, #1e2436 0%, #161b29 100%);
     border: 3px solid #f59e0b;
-    border-radius: 20px;
-    padding: 18px 22px 24px 22px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.65);
+    border-radius: 18px;
+    padding: 16px 18px 22px 18px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.6);
     text-align: center;
   }}
   .banner-wrap {{
     width: 100%;
-    max-height: 270px;
+    height: 250px;
     overflow: hidden;
     border-radius: 14px;
     border: 2px solid #fbbf24;
@@ -102,52 +104,53 @@ html_code = f"""
   }}
   .banner-wrap img {{
     width: 100%;
-    height: 270px;
+    height: 100%;
     object-fit: cover;
     display: block;
   }}
   .lobby-title {{
-    font-size: 26px;
+    font-size: clamp(20px, 3.2vw, 28px);
     font-weight: 900;
     color: #fde047;
     margin: 4px 0 6px 0;
   }}
   .lobby-sub {{
-    font-size: 14.5px;
+    font-size: clamp(13px, 1.8vw, 15px);
     color: #cbd5e1;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     line-height: 1.5;
   }}
   .role-grid {{
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
   }}
   .role-card {{
     background: #252d44;
     border: 3px solid #475569;
     border-radius: 16px;
-    padding: 16px;
+    padding: 14px;
     cursor: pointer;
-    transition: transform 0.16s ease, border-color 0.16s ease;
+    transition: transform 0.15s ease, border-color 0.15s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
+    touch-action: manipulation;
   }}
-  .role-card.p1:hover, .role-card.p1:active {{ border-color: #f87171; transform: translateY(-2px); }}
-  .role-card.p2:hover, .role-card.p2:active {{ border-color: #4ade80; transform: translateY(-2px); }}
+  .role-card.p1:hover, .role-card.p1:active {{ border-color: #f87171; transform: scale(0.99); }}
+  .role-card.p2:hover, .role-card.p2:active {{ border-color: #4ade80; transform: scale(0.99); }}
   .role-avatar {{
-    width: 82px;
-    height: 82px;
+    width: 78px;
+    height: 78px;
     border-radius: 14px;
     border: 3px solid #fbbf24;
     object-fit: cover;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }}
   .role-name {{
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 800;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
   }}
   .role-desc {{
     font-size: 13px;
@@ -155,10 +158,12 @@ html_code = f"""
     line-height: 1.45;
   }}
 
+  /* 게임 화면 */
   #game-screen {{
     display: none;
-    max-width: 1360px;
+    max-width: 1380px;
     margin: 0 auto;
+    padding-bottom: 14px;
   }}
   .top-hud {{
     display: flex;
@@ -169,12 +174,12 @@ html_code = f"""
     background: #1e2436;
     border: 2px solid #334155;
     border-radius: 12px;
-    padding: 8px 14px;
+    padding: 8px 12px;
     margin-bottom: 10px;
   }}
   .hud-badge {{
     font-weight: 800;
-    font-size: 14.5px;
+    font-size: 14px;
     padding: 5px 12px;
     border-radius: 999px;
   }}
@@ -189,8 +194,8 @@ html_code = f"""
     background: #0f172a;
     border: 2px solid #475569;
     border-radius: 8px;
-    padding: 4px 10px;
-    font-size: 12.5px;
+    padding: 4px 9px;
+    font-size: 12px;
     font-weight: 700;
     color: #64748b;
   }}
@@ -202,8 +207,8 @@ html_code = f"""
 
   .main-arena {{
     display: grid;
-    grid-template-columns: 1.32fr 1fr;
-    gap: 14px;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 12px;
     align-items: start;
   }}
 
@@ -212,7 +217,7 @@ html_code = f"""
     border: 3px solid #475569;
     border-radius: 16px;
     padding: 8px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.5);
   }}
   canvas#rpgCanvas {{
     width: 100%;
@@ -222,19 +227,21 @@ html_code = f"""
     background: #1e293b;
     touch-action: none;
   }}
+
+  /* 터치 컨트롤 바 (태블릿/모바일 최적화) */
   .controls-bar {{
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 10px;
     margin-top: 10px;
-    padding: 4px 6px;
+    padding: 4px;
     touch-action: none;
   }}
   .dpad {{
     display: grid;
-    grid-template-columns: repeat(3, 54px);
-    grid-template-rows: repeat(2, 48px);
+    grid-template-columns: repeat(3, 58px);
+    grid-template-rows: repeat(2, 52px);
     gap: 6px;
     touch-action: none;
   }}
@@ -242,8 +249,8 @@ html_code = f"""
     background: #334155;
     color: #f8fafc;
     border: 2px solid #64748b;
-    border-radius: 10px;
-    font-size: 18px;
+    border-radius: 12px;
+    font-size: 19px;
     font-weight: 900;
     cursor: pointer;
     touch-action: none;
@@ -253,25 +260,34 @@ html_code = f"""
     color: #0f172a;
     border-color: #fde047;
   }}
+  .touch-tip {{
+    font-size: 12px;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.45;
+    flex: 1;
+  }}
   .action-btn {{
     background: linear-gradient(135deg, #f59e0b, #d97706);
     color: #fff;
     border: none;
     border-radius: 14px;
-    padding: 15px 22px;
-    font-size: 17px;
+    padding: 14px 18px;
+    font-size: 16px;
     font-weight: 900;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45);
     touch-action: manipulation;
-    min-height: 56px;
+    min-height: 60px;
+    min-width: 124px;
   }}
-  .action-btn:active {{ transform: scale(0.97); }}
+  .action-btn:active {{ transform: scale(0.96); }}
 
+  /* 오른쪽 패널 */
   .right-panel {{
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }}
   .dialogue-box {{
     display: flex;
@@ -279,12 +295,12 @@ html_code = f"""
     background: linear-gradient(180deg, #2b2118 0%, #1f1710 100%);
     border: 4px solid #d97706;
     border-radius: 16px;
-    padding: 12px 14px;
+    padding: 12px;
     align-items: center;
   }}
   .portrait-frame {{
-    width: 88px;
-    height: 88px;
+    width: 82px;
+    height: 82px;
     flex-shrink: 0;
     border-radius: 12px;
     border: 3px solid #fbbf24;
@@ -309,11 +325,11 @@ html_code = f"""
     font-weight: 800;
     padding: 2px 10px;
     border-radius: 6px;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
   }}
   .dialogue-text {{
-    font-size: 14.5px;
-    line-height: 1.48;
+    font-size: 14px;
+    line-height: 1.45;
     color: #fef9c3;
     font-weight: 600;
   }}
@@ -322,15 +338,15 @@ html_code = f"""
     background: #1e2436;
     border: 3px solid #3b82f6;
     border-radius: 16px;
-    padding: 15px;
-    min-height: 360px;
+    padding: 14px;
+    min-height: 340px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
   }}
   .card-preview {{
     text-align: center;
-    margin: 6px 0 10px 0;
+    margin: 6px 0 8px 0;
   }}
   .card-canvas-wrap {{
     display: inline-block;
@@ -343,11 +359,11 @@ html_code = f"""
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 12px;
-    padding: 11px 12px;
+    padding: 10px 12px;
     margin-top: 8px;
   }}
   .step-title {{
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 800;
     color: #38bdf8;
     margin-bottom: 6px;
@@ -356,13 +372,15 @@ html_code = f"""
     background: #2563eb;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 9px 14px;
+    border-radius: 9px;
+    padding: 10px 14px;
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
     margin-right: 6px;
+    margin-bottom: 4px;
     touch-action: manipulation;
+    min-height: 42px;
   }}
   .btn-tts:hover {{ background: #1d4ed8; }}
   .btn-tts.unlocked-answer {{
@@ -375,12 +393,13 @@ html_code = f"""
     background: #dc2626;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 9px 14px;
+    border-radius: 9px;
+    padding: 10px 14px;
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
     touch-action: manipulation;
+    min-height: 42px;
   }}
   .btn-mic.listening {{
     background: #16a34a;
@@ -393,10 +412,10 @@ html_code = f"""
   }}
   .eng-input {{
     width: 100%;
-    padding: 11px 12px;
+    padding: 12px;
     font-size: 16px;
     font-weight: 700;
-    border-radius: 8px;
+    border-radius: 9px;
     border: 2px solid #64748b;
     background: #1e293b;
     color: #f8fafc;
@@ -409,28 +428,48 @@ html_code = f"""
   .btn-submit {{
     width: 100%;
     margin-top: 8px;
-    padding: 11px;
+    padding: 12px;
     background: #10b981;
     color: #064e3b;
     font-size: 15px;
     font-weight: 900;
     border: none;
-    border-radius: 8px;
+    border-radius: 9px;
     cursor: pointer;
     touch-action: manipulation;
+    min-height: 46px;
   }}
   .btn-submit:hover {{ background: #34d399; }}
 
-  @media (max-width: 960px) {{
+  /* 태블릿(가로/세로) 및 스마트폰 반응형 */
+  @media (max-width: 1024px) {{
     .main-arena {{
       grid-template-columns: 1fr;
     }}
+    .banner-wrap {{
+      height: 195px;
+    }}
+  }}
+  @media (max-width: 640px) {{
     .role-grid {{
       grid-template-columns: 1fr;
     }}
-    .banner-wrap, .banner-wrap img {{
-      height: 190px;
-      max-height: 190px;
+    .banner-wrap {{
+      height: 155px;
+    }}
+    .dpad {{
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(2, 46px);
+      gap: 5px;
+    }}
+    .action-btn {{
+      padding: 12px 14px;
+      font-size: 14.5px;
+      min-width: 105px;
+    }}
+    .portrait-frame {{
+      width: 68px;
+      height: 68px;
     }}
   }}
 
@@ -438,7 +477,7 @@ html_code = f"""
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.78);
+    background: rgba(0, 0, 0, 0.8);
     z-index: 9999;
     align-items: center;
     justify-content: center;
@@ -446,13 +485,13 @@ html_code = f"""
   }}
   #cutin-overlay img {{
     max-width: 720px;
-    width: 88%;
+    width: 90%;
     border-radius: 20px;
     border: 4px solid #facc15;
   }}
   .cutin-caption {{
     margin-top: 14px;
-    font-size: 22px;
+    font-size: clamp(18px, 3vw, 24px);
     font-weight: 900;
     color: #fde047;
     text-align: center;
@@ -466,7 +505,7 @@ html_code = f"""
     z-index: 10000;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 14px;
   }}
   .ending-card {{
     max-width: 680px;
@@ -474,7 +513,7 @@ html_code = f"""
     background: #1e293b;
     border: 4px solid #facc15;
     border-radius: 22px;
-    padding: 22px;
+    padding: 20px;
     text-align: center;
   }}
   .ending-badges {{
@@ -484,8 +523,8 @@ html_code = f"""
     margin: 12px 0;
   }}
   .ending-badges img {{
-    width: 80px;
-    height: 80px;
+    width: 76px;
+    height: 76px;
     border-radius: 14px;
     border: 3px solid #fbbf24;
   }}
@@ -523,8 +562,8 @@ html_code = f"""
 <div id="game-screen">
   <div class="top-hud">
     <div id="player-badge" class="hud-badge badge-p1">🔴 1번 산타 요원</div>
-    <div style="font-size:13px; color:#cbd5e1; font-weight:700;">
-      터치 패드 / 방향키 이동 · <b>[🔍 조사]</b>로 탐색
+    <div style="font-size:12.5px; color:#cbd5e1; font-weight:700;">
+      터치 패드 / 맵 길게 터치 이동 · <b>[🔍 조사]</b>
     </div>
     <div class="key-slots">
       <div id="slot-0" class="key-slot">🍳 Kitchen</div>
@@ -550,8 +589,8 @@ html_code = f"""
           <button id="btn-right"
             onpointerdown="holdDir('right', this)" onpointerup="releaseDir('right', this)" onpointerleave="releaseDir('right', this)" onpointercancel="releaseDir('right', this)">▶</button>
         </div>
-        <div style="font-size:12.5px; color:#94a3b8; text-align:center; line-height:1.4;">
-          통로와 벽은 막혀 있어요!<br><b>보물 상자</b>나 <b>자물쇠</b> 앞에서 조사!
+        <div class="touch-tip">
+          맵을 길게 눌러 이동하거나<br>패드로 이동 후 <b>조사</b>!
         </div>
         <button class="action-btn" onclick="interact()">🔍 조사 / 대화</button>
       </div>
@@ -571,12 +610,12 @@ html_code = f"""
       </div>
 
       <div class="mission-box" id="mission-panel">
-        <div style="text-align:center; padding:40px 10px; color:#94a3b8;">
-          <div style="font-size:42px; margin-bottom:10px;">🎁</div>
+        <div style="text-align:center; padding:34px 10px; color:#94a3b8;">
+          <div style="font-size:40px; margin-bottom:8px;">🎁</div>
           <div style="font-size:17px; font-weight:800; color:#e2e8f0; margin-bottom:6px;">
             탐험 대기 중
           </div>
-          <div style="font-size:14px; line-height:1.6;">
+          <div style="font-size:13.5px; line-height:1.6;">
             맵 위에서 빛나는 <b>보물 상자</b>에 다가가<br>
             <b>[🔍 조사 / 대화]</b> 버튼을 누르면 미션이 열립니다!
           </div>
@@ -593,8 +632,8 @@ html_code = f"""
 
 <div id="ending-overlay">
   <div class="ending-card">
-    <h2 style="color:#fde047; margin:0 0 8px 0; font-size:26px;">🎉 MISSION COMPLETE! 🎉</h2>
-    <p style="color:#cbd5e1; font-size:15px; margin:0 0 12px 0;">
+    <h2 style="color:#fde047; margin:0 0 8px 0; font-size:24px;">🎉 MISSION COMPLETE! 🎉</h2>
+    <p style="color:#cbd5e1; font-size:14.5px; margin:0 0 12px 0;">
       짝꿍과 영어로 소통하여 산타의 드림하우스 4개 구역 보물을 모두 복구했습니다!
     </p>
     <img id="complete-img" style="max-width:340px; width:85%; border-radius:14px; border:3px solid #fbbf24;" />
@@ -602,7 +641,7 @@ html_code = f"""
       <img id="end-agent-img" alt="내 요원" />
       <img id="end-santa-img" alt="엄지척 산타" />
     </div>
-    <div style="background:#0f172a; padding:10px; border-radius:10px; font-size:13.5px; color:#fde047; font-weight:700;">
+    <div style="background:#0f172a; padding:10px; border-radius:10px; font-size:13px; color:#fde047; font-weight:700;">
       📸 지금 이 화면을 캡처해서 학급 패들렛(Padlet)에 올려주세요!
     </div>
   </div>
@@ -686,7 +725,6 @@ function speakEnglish(text) {{
   window.speechSynthesis.speak(u);
 }}
 
-// 일부 모바일/태블릿 브라우저의 음성 목록 미리 로드
 if ("speechSynthesis" in window) {{
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
@@ -773,14 +811,16 @@ const WALL_RECTS = [
 ];
 
 let playerRole = 1;
-let player = {{ x: 190, y: 210, radius: 18, speed: 4.2 }};
+let player = {{ x: 190, y: 210, radius: 18, speed: 4.3 }};
 let keysPressed = {{}};
 let touchDirs = {{ up: false, down: false, left: false, right: false }};
+let canvasTarget = null;
 let unlockedRooms = [false, false, false, false];
 let openedDecoys = [false, false, false, false];
 let solvedWriteRooms = [false, false, false, false];
 
 function holdDir(dir, el) {{
+  canvasTarget = null;
   touchDirs[dir] = true;
   if (el) el.classList.add("active-dir");
 }}
@@ -858,16 +898,23 @@ function tryMove(dx, dy) {{
   if (canOccupy(player.x, nextY)) player.y = nextY;
 }}
 
+function focusInputSmooth(id) {{
+  const el = document.getElementById(id);
+  if (el) {{
+    setTimeout(() => el.scrollIntoView({{ behavior: "smooth", block: "center" }}), 180);
+  }}
+}}
+
 function interact() {{
   for (const g of GATES) {{
-    if (!g.unlocked && Math.hypot(player.x - g.x, player.y - g.y) < 82) {{
+    if (!g.unlocked && Math.hypot(player.x - g.x, player.y - g.y) < 84) {{
       openGateChallenge(g);
       return;
     }}
   }}
 
   for (const r of ROOMS) {{
-    if (Math.hypot(player.x - r.chestPos.x, player.y - r.chestPos.y) < 62) {{
+    if (Math.hypot(player.x - r.chestPos.x, player.y - r.chestPos.y) < 64) {{
       if (r.owner !== playerRole && !unlockedRooms[r.id]) {{
         setDialogue("santa_panic", "🎅 산타 본부", "통로가 마법 자물쇠로 막혀 있어요! 먼저 중앙 자물쇠 앞에서 짝꿍에게 영어로 질문해 보세요!");
         playSFX("error");
@@ -876,7 +923,7 @@ function interact() {{
       openTreasureMission(r);
       return;
     }}
-    if (Math.hypot(player.x - r.decoyPos.x, player.y - r.decoyPos.y) < 58) {{
+    if (Math.hypot(player.x - r.decoyPos.x, player.y - r.decoyPos.y) < 60) {{
       openedDecoys[r.id] = true;
       playSFX("decoy");
       setDialogue("santa_panic", "🎅 앗, 함정 상자!", r.decoyText);
@@ -894,7 +941,7 @@ function renderDecoyCard(room) {{
   panel.innerHTML = `
     <div style="text-align:center;">
       <div style="color:#fbbf24; font-weight:900; font-size:17px; margin-bottom:8px;">😜 코믹 꽝 카드 발견!</div>
-      <img src="${{imgSrc}}" style="width:210px; height:210px; border-radius:14px; border:3px solid #f59e0b; object-fit:cover;" />
+      <img src="${{imgSrc}}" style="width:195px; height:195px; border-radius:14px; border:3px solid #f59e0b; object-fit:cover;" />
       <p style="color:#cbd5e1; font-size:14px; margin-top:10px; line-height:1.5;">
         ${{room.decoyText}}
       </p>
@@ -913,13 +960,13 @@ function openTreasureMission(room) {{
   const panel = document.getElementById("mission-panel");
   panel.innerHTML = `
     <div>
-      <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
         <span style="font-weight:900; color:#fde047; font-size:16px;">✨ ${{room.roomName}} 보물 단서</span>
         <span style="font-size:12px; background:#1e3a8a; padding:3px 8px; border-radius:6px;">질문 듣기 → 쓰기 → 정답 발음</span>
       </div>
       <div class="card-preview">
         <div class="card-canvas-wrap">
-          <canvas id="cardCropCanvas" width="150" height="150"></canvas>
+          <canvas id="cardCropCanvas" width="144" height="144"></canvas>
         </div>
         <div style="font-size:14px; color:#93c5fd; margin-top:5px; font-weight:800;">
           질문: "${{room.question}}"
@@ -938,6 +985,7 @@ function openTreasureMission(room) {{
         <div class="step-title">2단계: 정답 문장 직접 쓰기</div>
         <input id="mission-write-input" class="eng-input" type="text"
           value="${{isSolved ? room.answer : ''}}"
+          onfocus="focusInputSmooth('mission-write-input')"
           placeholder="예: There is a ..." autocomplete="off" />
         <button class="btn-submit" onclick="checkMissionWrite(${{room.id}})">✅ 문장 확인하기</button>
       </div>
@@ -957,7 +1005,7 @@ function openTreasureMission(room) {{
   if (IMGS.cards && IMGS.cards.complete) {{
     const sw = IMGS.cards.width / 2;
     const sh = IMGS.cards.height / 2;
-    ctx.drawImage(IMGS.cards, room.crop[0] * sw, room.crop[1] * sh, sw, sh, 0, 0, 150, 150);
+    ctx.drawImage(IMGS.cards, room.crop[0] * sw, room.crop[1] * sh, sw, sh, 0, 0, 144, 144);
   }}
 }}
 
@@ -1069,7 +1117,7 @@ function openGateChallenge(gate) {{
   panel.innerHTML = `
     <div>
       <div style="text-align:center; margin-bottom:8px;">
-        <img src="${{ASSETS.magic_lock || ''}}" style="width:84px; height:84px; object-fit:contain;" />
+        <img src="${{ASSETS.magic_lock || ''}}" style="width:82px; height:82px; object-fit:contain;" />
         <div style="font-size:17px; font-weight:900; color:#fbbf24;">🔒 마법 자물쇠 해제 작전</div>
       </div>
 
@@ -1083,7 +1131,9 @@ function openGateChallenge(gate) {{
 
       <div class="step-box">
         <div class="step-title">2단계: 짝꿍이 대답해 준 영어 문장 입력</div>
-        <input id="gate-answer-input" class="eng-input" type="text" placeholder="짝꿍이 알려준 문장을 입력하세요" autocomplete="off" />
+        <input id="gate-answer-input" class="eng-input" type="text"
+          onfocus="focusInputSmooth('gate-answer-input')"
+          placeholder="짝꿍이 알려준 문장을 입력하세요" autocomplete="off" />
         <button class="btn-submit" onclick="verifyGateAnswer('${{gate.id}}', ${{targetRoomId}})">🔓 자물쇠 열기!</button>
       </div>
     </div>
@@ -1137,12 +1187,46 @@ function checkAllClear() {{
 const canvas = document.getElementById("rpgCanvas");
 const ctx = canvas.getContext("2d");
 
+// 맵 캔버스 직접 터치/드래그 유도 이동
+function updateCanvasTouchPoint(clientX, clientY) {{
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  canvasTarget = {{
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  }};
+}}
+
+canvas.addEventListener("pointerdown", e => {{
+  canvas.setPointerCapture(e.pointerId);
+  updateCanvasTouchPoint(e.clientX, e.clientY);
+}});
+canvas.addEventListener("pointermove", e => {{
+  if (canvasTarget) updateCanvasTouchPoint(e.clientX, e.clientY);
+}});
+canvas.addEventListener("pointerup", () => {{ canvasTarget = null; }});
+canvas.addEventListener("pointercancel", () => {{ canvasTarget = null; }});
+
 function updateMovement() {{
   let dx = 0, dy = 0;
   if (keysPressed["arrowup"] || keysPressed["w"] || touchDirs.up) dy -= player.speed;
   if (keysPressed["arrowdown"] || keysPressed["s"] || touchDirs.down) dy += player.speed;
   if (keysPressed["arrowleft"] || keysPressed["a"] || touchDirs.left) dx -= player.speed;
   if (keysPressed["arrowright"] || keysPressed["d"] || touchDirs.right) dx += player.speed;
+
+  if (dx === 0 && dy === 0 && canvasTarget) {{
+    const tx = canvasTarget.x - player.x;
+    const ty = canvasTarget.y - player.y;
+    const dist = Math.hypot(tx, ty);
+    if (dist > 10) {{
+      dx = (tx / dist) * player.speed;
+      dy = (ty / dist) * player.speed;
+    }} else {{
+      canvasTarget = null;
+    }}
+  }}
+
   if (dx !== 0 || dy !== 0) tryMove(dx, dy);
 }}
 
@@ -1224,4 +1308,4 @@ function gameLoop() {{
 </html>
 """
 
-components.html(html_code, height=780, scrolling=False)
+components.html(html_code, height=820, scrolling=True)
