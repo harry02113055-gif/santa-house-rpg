@@ -674,15 +674,60 @@ function playSFX(type) {{
   }}
 }}
 
+let preferredEnVoice = null;
+
+function loadEnglishVoice() {{
+  if (!("speechSynthesis" in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return;
+
+  preferredEnVoice =
+    voices.find(v => v.lang === "en-US" && /natural|google|samantha|alex|jenny|aria/i.test(v.name)) ||
+    voices.find(v => v.lang === "en-US") ||
+    voices.find(v => v.lang && v.lang.toLowerCase().startsWith("en")) ||
+    null;
+}}
+
+if ("speechSynthesis" in window) {{
+  loadEnglishVoice();
+  window.speechSynthesis.onvoiceschanged = loadEnglishVoice;
+}}
+
 function speakEnglish(text) {{
+  if (!("speechSynthesis" in window)) {{
+    alert("이 브라우저는 음성 읽기를 지원하지 않습니다.");
+    return;
+  }}
+
+  if (!preferredEnVoice) {{
+    loadEnglishVoice();
+  }}
+
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US";
-  u.rate = 0.88;
-  const frame = document.getElementById("portrait-frame");
-  frame.classList.add("speaking");
-  u.onend = () => frame.classList.remove("speaking");
-  window.speechSynthesis.speak(u);
+
+  setTimeout(() => {{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.88;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    if (preferredEnVoice) {{
+      u.voice = preferredEnVoice;
+    }}
+
+    const frame = document.getElementById("portrait-frame");
+    u.onstart = () => {{
+      if (frame) frame.classList.add("speaking");
+    }};
+    u.onend = () => {{
+      if (frame) frame.classList.remove("speaking");
+    }};
+    u.onerror = () => {{
+      if (frame) frame.classList.remove("speaking");
+    }};
+
+    window.speechSynthesis.speak(u);
+  }}, 60);
 }}
 
 // 4개 방 데이터 (760x540 캔버스 기준)
@@ -756,17 +801,13 @@ const GATES = [
 ];
 
 // 맵 벽체 및 통로 차단 장애물 (x, y, w, h) - 캔버스 760x540 기준
-// 중앙 세로벽(x=364..396)에 상단 통로(y=115..175)와 하단 통로(y=375..435)만 두고 나머지는 막아 우회/벽 통과 방지
 const WALL_RECTS = [
-  // 외곽 벽
   {{ x: 0, y: 0, w: 760, h: 36 }},
   {{ x: 0, y: 504, w: 760, h: 36 }},
   {{ x: 0, y: 0, w: 36, h: 540 }},
   {{ x: 724, y: 0, w: 36, h: 540 }},
-  // 중앙 가로 구분벽 (상·하 방 구분, 중앙 통로 구간은 게이트로 제어)
   {{ x: 36, y: 256, w: 310, h: 28 }},
   {{ x: 414, y: 256, w: 310, h: 28 }},
-  // 중앙 세로벽 (상단 통로 위/사이/아래 막기)
   {{ x: 364, y: 36, w: 32, h: 78 }},
   {{ x: 364, y: 176, w: 32, h: 198 }},
   {{ x: 364, y: 436, w: 32, h: 68 }}
@@ -830,7 +871,6 @@ window.addEventListener("keyup", e => {{
   keysPressed[e.key.toLowerCase()] = false;
 }});
 
-// 원형-사각형 충돌 판정
 function circleIntersectsRect(cx, cy, r, rect) {{
   const closestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
   const closestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
@@ -840,11 +880,9 @@ function circleIntersectsRect(cx, cy, r, rect) {{
 }}
 
 function canOccupy(nx, ny) {{
-  // 1. 고정 벽체 충돌 검사
   for (const w of WALL_RECTS) {{
     if (circleIntersectsRect(nx, ny, player.radius, w)) return false;
   }}
-  // 2. 잠긴 마법 자물쇠 통로 차단 검사 (통로 폭 전체를 막아 통과 불가)
   for (const g of GATES) {{
     if (!g.unlocked) {{
       const gateWall = {{ x: g.x - 26, y: g.y - 32, w: 52, h: 64 }};
@@ -905,7 +943,6 @@ function renderDecoyCard(room) {{
   `;
 }}
 
-// 보물 미션: 정답 전에는 '질문 듣기'만 제공 -> 정답 후 '정답 문장 듣기' 버튼 등장!
 function openTreasureMission(room) {{
   playSFX("open");
   const myPortrait = playerRole === 1 ? "portrait_p1" : "portrait_p2";
@@ -977,7 +1014,6 @@ function checkMissionWrite(roomId) {{
   if (val === target || room.altAnswers.includes(val)) {{
     solvedWriteRooms[roomId] = true;
     playSFX("success");
-    // 정답을 맞춘 뒤에만 정답 문장 듣기 버튼 공개 + 원어민 정답 발음 재생
     const ansBtn = document.getElementById("btn-answer-tts");
     if (ansBtn) ansBtn.style.display = "inline-block";
 
@@ -1161,7 +1197,6 @@ function drawGame() {{
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }}
 
-  // 벽체 구분 가이드(살짝 반투명 벽 마감으로 통로 경계 시각화)
   ctx.save();
   ctx.fillStyle = "rgba(15, 23, 42, 0.42)";
   for (const w of WALL_RECTS) {{
