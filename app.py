@@ -82,7 +82,6 @@ html_code = f"""
     overflow-x: hidden;
   }}
 
-  /* 로비 화면 */
   #lobby-screen {{
     max-width: 980px;
     margin: 8px auto;
@@ -156,7 +155,6 @@ html_code = f"""
     line-height: 1.45;
   }}
 
-  /* 메인 게임 레이아웃 */
   #game-screen {{
     display: none;
     max-width: 1360px;
@@ -209,7 +207,6 @@ html_code = f"""
     align-items: start;
   }}
 
-  /* 왼쪽 맵 캔버스 영역 */
   .map-panel {{
     background: #0f172a;
     border: 3px solid #475569;
@@ -271,7 +268,6 @@ html_code = f"""
   }}
   .action-btn:active {{ transform: scale(0.97); }}
 
-  /* 오른쪽 패널 */
   .right-panel {{
     display: flex;
     flex-direction: column;
@@ -425,7 +421,6 @@ html_code = f"""
   }}
   .btn-submit:hover {{ background: #34d399; }}
 
-  /* 태블릿/모바일 반응형 */
   @media (max-width: 960px) {{
     .main-arena {{
       grid-template-columns: 1fr;
@@ -439,7 +434,6 @@ html_code = f"""
     }}
   }}
 
-  /* 컷인 & 엔딩 오버레이 */
   #cutin-overlay {{
     display: none;
     position: fixed;
@@ -675,17 +669,29 @@ function playSFX(type) {{
 }}
 
 function speakEnglish(text) {{
+  if (!("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
   u.rate = 0.88;
+  u.pitch = 1.05;
+  const voices = window.speechSynthesis.getVoices();
+  const enVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("en"));
+  if (enVoice) u.voice = enVoice;
+
   const frame = document.getElementById("portrait-frame");
   frame.classList.add("speaking");
   u.onend = () => frame.classList.remove("speaking");
+  u.onerror = () => frame.classList.remove("speaking");
   window.speechSynthesis.speak(u);
 }}
 
-// 4개 방 데이터 (760x540 캔버스 기준)
+// 일부 모바일/태블릿 브라우저의 음성 목록 미리 로드
+if ("speechSynthesis" in window) {{
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}}
+
 const ROOMS = [
   {{
     id: 0,
@@ -749,24 +755,18 @@ const ROOMS = [
   }}
 ];
 
-// 중앙 통로 마법 자물쇠 2개 (상단 좌우 연결 통로 / 하단 좌우 연결 통로)
 const GATES = [
   {{ id: "top_gate", x: 380, y: 145, unlocked: false, targetRoomForP1: 1, targetRoomForP2: 0 }},
   {{ id: "bot_gate", x: 380, y: 405, unlocked: false, targetRoomForP1: 3, targetRoomForP2: 2 }}
 ];
 
-// 맵 벽체 및 통로 차단 장애물 (x, y, w, h) - 캔버스 760x540 기준
-// 중앙 세로벽(x=364..396)에 상단 통로(y=115..175)와 하단 통로(y=375..435)만 두고 나머지는 막아 우회/벽 통과 방지
 const WALL_RECTS = [
-  // 외곽 벽
   {{ x: 0, y: 0, w: 760, h: 36 }},
   {{ x: 0, y: 504, w: 760, h: 36 }},
   {{ x: 0, y: 0, w: 36, h: 540 }},
   {{ x: 724, y: 0, w: 36, h: 540 }},
-  // 중앙 가로 구분벽 (상·하 방 구분, 중앙 통로 구간은 게이트로 제어)
   {{ x: 36, y: 256, w: 310, h: 28 }},
   {{ x: 414, y: 256, w: 310, h: 28 }},
-  // 중앙 세로벽 (상단 통로 위/사이/아래 막기)
   {{ x: 364, y: 36, w: 32, h: 78 }},
   {{ x: 364, y: 176, w: 32, h: 198 }},
   {{ x: 364, y: 436, w: 32, h: 68 }}
@@ -830,7 +830,6 @@ window.addEventListener("keyup", e => {{
   keysPressed[e.key.toLowerCase()] = false;
 }});
 
-// 원형-사각형 충돌 판정
 function circleIntersectsRect(cx, cy, r, rect) {{
   const closestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
   const closestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
@@ -840,11 +839,9 @@ function circleIntersectsRect(cx, cy, r, rect) {{
 }}
 
 function canOccupy(nx, ny) {{
-  // 1. 고정 벽체 충돌 검사
   for (const w of WALL_RECTS) {{
     if (circleIntersectsRect(nx, ny, player.radius, w)) return false;
   }}
-  // 2. 잠긴 마법 자물쇠 통로 차단 검사 (통로 폭 전체를 막아 통과 불가)
   for (const g of GATES) {{
     if (!g.unlocked) {{
       const gateWall = {{ x: g.x - 26, y: g.y - 32, w: 52, h: 64 }};
@@ -905,7 +902,6 @@ function renderDecoyCard(room) {{
   `;
 }}
 
-// 보물 미션: 정답 전에는 '질문 듣기'만 제공 -> 정답 후 '정답 문장 듣기' 버튼 등장!
 function openTreasureMission(room) {{
   playSFX("open");
   const myPortrait = playerRole === 1 ? "portrait_p1" : "portrait_p2";
@@ -925,17 +921,17 @@ function openTreasureMission(room) {{
         <div class="card-canvas-wrap">
           <canvas id="cardCropCanvas" width="150" height="150"></canvas>
         </div>
-        <div style="font-size:13.5px; color:#93c5fd; margin-top:5px; font-weight:700;">
+        <div style="font-size:14px; color:#93c5fd; margin-top:5px; font-weight:800;">
           질문: "${{room.question}}"
         </div>
       </div>
 
       <div class="step-box">
         <div class="step-title">1단계: 원어민 질문 듣기 (정답 확인 후 정답 문장 듣기 해금)</div>
-        <button class="btn-tts" onclick="speakEnglish('${{room.question}}')">🔊 질문 듣기</button>
+        <button class="btn-tts" onclick="speakEnglish('${{room.question.replace(/'/g, "\\\\'")}}')">🔊 질문 듣기</button>
         <button id="btn-answer-tts" class="btn-tts unlocked-answer"
           style="display:${{isSolved ? 'inline-block' : 'none'}};"
-          onclick="speakEnglish('${{room.answer}}')">🔊 정답 문장 듣기</button>
+          onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}')">🔊 정답 문장 듣기</button>
       </div>
 
       <div class="step-box">
@@ -977,7 +973,6 @@ function checkMissionWrite(roomId) {{
   if (val === target || room.altAnswers.includes(val)) {{
     solvedWriteRooms[roomId] = true;
     playSFX("success");
-    // 정답을 맞춘 뒤에만 정답 문장 듣기 버튼 공개 + 원어민 정답 발음 재생
     const ansBtn = document.getElementById("btn-answer-tts");
     if (ansBtn) ansBtn.style.display = "inline-block";
 
@@ -1051,7 +1046,7 @@ function completeRoomMission(roomId, spokenText) {{
       <div style="background:#0f172a; border:2px solid #facc15; border-radius:12px; padding:12px; font-size:18px; font-weight:900; color:#fff; margin-bottom:12px;">
         "${{room.answer}}"
       </div>
-      <button class="btn-tts unlocked-answer" onclick="speakEnglish('${{room.answer}}')">🔊 정답 문장 다시 듣기</button>
+      <button class="btn-tts unlocked-answer" onclick="speakEnglish('${{room.answer.replace(/'/g, "\\\\'")}}')">🔊 정답 문장 다시 듣기</button>
       <p style="font-size:13.5px; color:#cbd5e1; line-height:1.5; margin-top:12px;">
         이제 중앙 통로의 <b>황금 마법 자물쇠</b> 앞으로 가서 짝꿍 방의 단서를 영어로 물어보세요!
       </p>
@@ -1083,7 +1078,7 @@ function openGateChallenge(gate) {{
         <div style="font-size:16px; font-weight:900; color:#fde047; margin-bottom:6px;">
           "${{targetRoom.question}}"
         </div>
-        <button class="btn-tts" onclick="speakEnglish('${{targetRoom.question}}')">🔊 질문 발음 들어보기</button>
+        <button class="btn-tts" onclick="speakEnglish('${{targetRoom.question.replace(/'/g, "\\\\'")}}')">🔊 질문 발음 들어보기</button>
       </div>
 
       <div class="step-box">
@@ -1161,7 +1156,6 @@ function drawGame() {{
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }}
 
-  // 벽체 구분 가이드(살짝 반투명 벽 마감으로 통로 경계 시각화)
   ctx.save();
   ctx.fillStyle = "rgba(15, 23, 42, 0.42)";
   for (const w of WALL_RECTS) {{
